@@ -119,6 +119,7 @@
 - `craft\models\Site::getBaseUrl()` now has a `$parse` argument, which can be set to `false` to return the raw (unparsed) base URL.
 - `craft\services\Composer::install()` no longer has an `$allowlist` argument.
 - `craft\services\Gql::getValidationRules()` now has an `$isIntrospectionQuery` argument.
+- The `project-config/apply` command now displays a list of changes it is applying. ([#7235](https://github.com/craftcms/cms/issues/7235))
 - Craft no longer reports PHP deprecation errors.
 - GraphQL queries now support eager-loading for arguments provided as input objects.
 - Updated Yii to 2.0.39.
