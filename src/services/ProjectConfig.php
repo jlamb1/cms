@@ -1121,8 +1121,10 @@ class ProjectConfig extends Component
      * @param callable $handler The handler method.
      * @param mixed $data The data to be passed to the event handler when the event is triggered.
      * When the event handler is invoked, this data can be accessed via [[ConfigEvent::data]].
+     * @param bool $registerAsFirst Whether the event should be registered at the beginning of queue for the path.
+     * Set to `false` by default.
      */
-    public function registerChangeEventHandler(string $event, string $path, $handler, $data = null)
+    public function registerChangeEventHandler(string $event, string $path, $handler, $data = null, bool $registerAsFirst = false)
     {
         $specificity = substr_count($path, '.');
         $pattern = '/^(?P<path>' . preg_quote($path, '/') . ')(?P<extra>\..+)?$/';
@@ -1130,7 +1132,16 @@ class ProjectConfig extends Component
 
         $this->_changeEventHandlers[$event][] = [$pattern, $handler, $data];
         $this->_changeEventHandlerSpecificity[$event][] = $specificity;
-        $this->_changeEventHandlerRegistrationOrder[$event][] = count($this->_changeEventHandlers[$event]);
+
+        if ($registerAsFirst) {
+            array_unshift($this->_changeEventHandlerRegistrationOrder[$event], 0);
+            foreach ($this->_changeEventHandlerRegistrationOrder[$event] as &$order) {
+                $order++;
+            }
+            unset ($order);
+        } else {
+            $this->_changeEventHandlerRegistrationOrder[$event][] = count($this->_changeEventHandlers[$event]);
+        }
         unset($this->_sortedChangeEventHandlers[$event]);
     }
 

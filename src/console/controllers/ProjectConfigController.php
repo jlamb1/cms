@@ -10,10 +10,23 @@ namespace craft\console\controllers;
 use Craft;
 use craft\console\Controller;
 use craft\db\Table;
+use craft\events\ConfigEvent;
 use craft\helpers\Console;
 use craft\helpers\Db;
 use craft\helpers\ProjectConfig;
+use craft\services\AssetTransforms;
+use craft\services\Categories;
+use craft\services\Fields;
+use craft\services\Globals;
+use craft\services\Gql;
 use craft\services\Plugins;
+use craft\services\ProjectConfig as ProjectConfigService;
+use craft\services\Sections;
+use craft\services\Sites;
+use craft\services\Tags;
+use craft\services\UserGroups;
+use craft\services\Users;
+use craft\services\Volumes;
 use yii\console\ExitCode;
 
 /**
@@ -34,6 +47,12 @@ class ProjectConfigController extends Controller
      * @since 3.5.13
      */
     public $invert = false;
+
+    /**
+     * Keep track of reported paths.
+     * @var array
+     */
+    private $reportedPaths = [];
 
     /**
      * @inheritdoc
@@ -141,7 +160,9 @@ class ProjectConfigController extends Controller
                 return ExitCode::UNSPECIFIED_ERROR;
             }
 
-            $this->stdout("Applying changes from your project config files ... ", Console::FG_YELLOW);
+            $this->_registerOutputListeners();
+
+            $this->stdout("Applying changes from your project config files ..." . PHP_EOL, Console::FG_YELLOW);
             try {
                 $forceUpdate = $projectConfig->forceUpdate;
                 $projectConfig->forceUpdate = $this->force;
@@ -289,5 +310,73 @@ class ProjectConfigController extends Controller
         }
 
         return true;
+    }
+
+    private function _registerOutputListeners()
+    {
+        $listeners = [
+            Fields::CONFIG_FIELDGROUP_KEY . '.{uid}' => ['object' => 'field group', 'identifier' => 'name'],
+            Fields::CONFIG_FIELDS_KEY . '.{uid}' => ['object' => 'field', 'identifier' => 'name'],
+            Volumes::CONFIG_VOLUME_KEY . '.{uid}' => ['object' => 'volume', 'identifier' => 'name'],
+            AssetTransforms::CONFIG_TRANSFORM_KEY . '.{uid}' => ['object' => 'asset transform', 'identifier' => 'name'],
+            Sites::CONFIG_SITEGROUP_KEY . '.{uid}' => ['object' => 'site group', 'identifier' => 'name'],
+            Sites::CONFIG_SITES_KEY . '.{uid}' => ['object' => 'site', 'identifier' => 'name'],
+            Tags::CONFIG_TAGGROUP_KEY . '.{uid}' => ['object' => 'tag group', 'identifier' => 'name'],
+            Categories::CONFIG_CATEGORYROUP_KEY . '.{uid}' => ['object' => 'category group', 'identifier' => 'name'],
+            UserGroups::CONFIG_USERPGROUPS_KEY . '.{uid}' => ['object' => 'user group', 'identifier' => 'name'],
+            UserGroups::CONFIG_USERPGROUPS_KEY . '.{uid}.permissions' => ['object' => 'permissions for user group', 'identifier' => 'name'],
+            Users::CONFIG_USERLAYOUT_KEY => ['object' => 'user field layout'],
+            Globals::CONFIG_GLOBALSETS_KEY . '.{uid}' => ['object' => 'global set', 'identifier' => 'name'],
+            Sections::CONFIG_SECTIONS_KEY . '.{uid}' => ['object' => 'section', 'identifier' => 'name'],
+            Sections::CONFIG_ENTRYTYPES_KEY . '.{uid}' => ['object' => 'entry type', 'identifier' => 'name'],
+            Gql::CONFIG_GQL_SCHEMAS_KEY . '.{uid}' => ['object' => 'GraphQL schema', 'identifier' => 'name'],
+            Gql::CONFIG_GQL_PUBLIC_TOKEN_KEY . '.{uid}' => ['object' => 'GraphQL public schema settings'],
+        ];
+
+        $projectConfig = Craft::$app->getProjectConfig();
+
+        foreach ($listeners as $path => $configuration) {
+
+            $createOutputLogger = function($type) use ($configuration) {
+                return function(ConfigEvent $event) use ($type, $configuration) {
+                    // Skip double-reporting
+                    if (array_key_exists($event->path, $this->reportedPaths)) {
+                        return;
+                    }
+                    $this->reportedPaths[$event->path] = true;
+
+                    $newId = !empty($configuration['identifier']) ? $event->newValue[$configuration['identifier']] : '';
+                    $oldId = !empty($configuration['identifier']) ? $event->oldValue[$configuration['identifier']] : '';
+
+                    $message = $suffix = '';
+
+                    switch ($type) {
+                        case 'add':
+                            $message = 'Adding ' . (!empty($newId) ? 'a new ' : '') . $configuration['object'];
+                            $suffix = !empty($newId) ? ': ' . $newId : '';
+                            $this->stdout('  +++ ', Console::FG_GREEN);
+                            break;
+                        case 'change':
+                            $message = 'Changing ' . (!empty($newId) ? 'the ' : '') . $configuration['object'];
+                            $suffix = !empty($oldId) ? ': ' . $oldId : '';
+                            $suffix .= $newId !== $oldId ? " (also renaming to $newId)" : '';
+                            $this->stdout('  === ', Console::FG_YELLOW);
+                            break;
+                        case 'delete':
+                            $message = 'Removing ' . (!empty($oldId) ? 'the ' : '') . $configuration['object'];
+                            $suffix = !empty($oldId) ? ': ' . $oldId : '';
+                            $this->stdout('  --- ', Console::FG_RED);
+                            break;
+                    }
+
+                    $this->stdout("$message", Console::FG_GREEN);
+                    $this->stdout("$suffix" . PHP_EOL, Console::FG_YELLOW);
+                };
+            };
+
+            $projectConfig->registerChangeEventHandler(ProjectConfigService::EVENT_ADD_ITEM, $path, $createOutputLogger('add'), null, true);
+            $projectConfig->registerChangeEventHandler(ProjectConfigService::EVENT_UPDATE_ITEM, $path, $createOutputLogger('change'), null, true);
+            $projectConfig->registerChangeEventHandler(ProjectConfigService::EVENT_REMOVE_ITEM, $path, $createOutputLogger('delete'), null, true);
+        }
     }
 }
