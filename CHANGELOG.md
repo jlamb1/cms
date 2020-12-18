@@ -4,7 +4,7 @@
 
 ### Changed
 - Craft no longer reports user deprecation errors logged with `E_USER_DEPRECATED`.
-- The `project-config/apply` command now displays a list of changes it is applying.
+- The `project-config/apply` command now displays a list of changes it is applying. ([#7235](https://github.com/craftcms/cms/issues/7235))
 
 ### Fixed
 - Fixed a bug where the Edit Site page was appending a `/` to the end of the base URL, even if it was set to an environment variable.
