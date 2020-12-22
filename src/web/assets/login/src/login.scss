@@ -41,7 +41,7 @@ body {
     left: 0;
     bottom: 0;
     display: block;
-    content: '.';
+    content: '';
     font-size: 0;
     @include input-styles;
     background-color: transparent;
