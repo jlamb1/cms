@@ -10,7 +10,7 @@ body { display: -webkit-flex; display: flex; -webkit-flex-direction: column; fle
 
 #login-fields { position: relative; padding: 1px; }
 
-#login-fields:after { position: absolute; z-index: 1; top: 0; right: 0; left: 0; bottom: 0; display: block; content: '.'; font-size: 0; border-radius: 3px; border: 1px solid rgba(96, 125, 159, 0.25); background-color: #fbfcfe; box-shadow: inset 0 1px 4px -1px rgba(96, 125, 159, 0.25); background-clip: padding-box; background-color: transparent; border-color: transparent; -webkit-user-select: none; user-select: none; pointer-events: none; }
+#login-fields:after { position: absolute; z-index: 1; top: 0; right: 0; left: 0; bottom: 0; display: block; content: ''; font-size: 0; border-radius: 3px; border: 1px solid rgba(96, 125, 159, 0.25); background-color: #fbfcfe; box-shadow: inset 0 1px 4px -1px rgba(96, 125, 159, 0.25); background-clip: padding-box; background-color: transparent; border-color: transparent; -webkit-user-select: none; user-select: none; pointer-events: none; }
 
 #login-fields .text { box-shadow: none; }
 
